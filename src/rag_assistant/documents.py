@@ -1,11 +1,13 @@
+import re
 from io import BytesIO
 from pathlib import Path
-import re
+
 from docx import Document
 from pypdf import PdfReader
 
 MAX_FILE_BYTES = 10 * 1024 * 1024
 SUPPORTED = {".pdf", ".docx", ".txt", ".md"}
+
 
 def extract_text(filename: str, content: bytes) -> str:
     suffix = Path(filename).suffix.lower()
@@ -14,10 +16,10 @@ def extract_text(filename: str, content: bytes) -> str:
     if not content or len(content) > MAX_FILE_BYTES:
         raise ValueError("File must be non-empty and no larger than 10 MB.")
     if suffix == ".pdf":
-        text = "\n".join(p.extract_text() or "" for p in PdfReader(BytesIO(content)).pages)
+        text = "\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(content)).pages)
     elif suffix == ".docx":
-        doc = Document(BytesIO(content))
-        text = "\n".join(p.text for p in doc.paragraphs)
+        document = Document(BytesIO(content))
+        text = "\n".join(paragraph.text for paragraph in document.paragraphs)
     else:
         text = content.decode("utf-8-sig")
     text = re.sub(r"[ \t]+", " ", text)
@@ -25,6 +27,7 @@ def extract_text(filename: str, content: bytes) -> str:
     if not text:
         raise ValueError("No extractable text found in this document.")
     return text
+
 
 def chunk_text(text: str, chunk_size: int = 900, overlap: int = 150) -> list[str]:
     if chunk_size <= 0 or overlap < 0 or overlap >= chunk_size:
